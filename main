@@ -1,0 +1,139 @@
+import java.io.File
+import java.util.*
+import kotlin.math.*
+
+val aFile = File("C:\\Users\\SNA\\IdeaProjects\\directory.txt")
+val find = File("C:\\Users\\SNA\\IdeaProjects\\find.txt").readLines()
+val sortedFile = File("C:\\Users\\SNA\\IdeaProjects\\sortedFile.txt")
+
+fun main() {
+    linearSearch()
+    jumpSearch()
+    binarySearch()
+    hashTableSearch()
+}
+fun linearSearch() {
+    var cnt = 0
+    println("Start searching (linear search)...")
+    val start = System.currentTimeMillis()
+    aFile.forEachLine { it.substringAfter(' ').let {s -> if (find.contains(s)) cnt++ } }
+    val time = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", System.currentTimeMillis() - start)
+    println("Found $cnt / ${find.size} entries. Time taken: $time")
+}
+fun jumpSearch() {
+    val sortList = aFile.readLines().toMutableList()
+    println("\n" + "Start searching (bubble sort + jump search)...")
+    var cnt = 0
+    val start = System.currentTimeMillis()
+    bubbleSortOp(sortList)
+    sortedFile.writeText(bubbleSortOp(sortList).joinToString("\n"))
+    val end1 = System.currentTimeMillis()
+    val time1 = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", end1 - start)
+    if (end1 - start > 100_000) {
+        aFile.forEachLine { it.substringAfter(' ').let {s -> if (find.contains(s)) cnt++ } }
+        val time2 = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", System.currentTimeMillis() - end1)
+        val time3 = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", System.currentTimeMillis() - start)
+
+        println("Found $cnt / ${find.size} entries. Time taken: $time3" +
+                "\nSorting time: $time1 - STOPPED, moved to linear search" +
+                "\nSearching time: $time2")
+        return
+    }
+    find.forEach{ cnt += jumpSearchOp(sortList, it) }
+    val time2 = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", System.currentTimeMillis() - end1)
+    val totalTime = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", System.currentTimeMillis() - start)
+    println("Found $cnt / ${find.size} entries. Time taken: $totalTime")
+    println("Sorting time: $time1")
+    println("Searching time: $time2")
+}
+fun bubbleSortOp(sortList:MutableList<String>): MutableList<String> {
+    var cnt = true
+    val start = System.currentTimeMillis()
+    while(cnt) {
+        cnt = false
+        for (i in 0 until sortList.lastIndex) {
+            if (sortList[i].substringAfter(' ') > sortList[i + 1].substringAfter(' ')) {
+                sortList[i] = sortList[i+1].apply { sortList[i+1] = sortList[i] }
+                cnt = true
+            }
+        }
+        val end1 = System.currentTimeMillis()
+        if (end1 - start > 100_000) cnt = false
+    }
+    return sortList
+}
+fun jumpSearchOp(list: List<String>, name: String): Int {
+    val iStep = floor(sqrt(list.size.toDouble())).toInt()
+    var botInt = if (list.size - iStep * iStep == 0) list.lastIndex else list.size - (list.size - iStep * iStep) + 1
+    var topInt = list.size
+    for (i in list.indices step iStep) {
+        if (list[i].substringAfter(' ') > name) {
+            botInt = i - iStep + 1
+            topInt = i - 1
+            break
+        }
+    }
+    list.subList(botInt, topInt).reversed().forEach { if (it.substringAfter(' ') == name) return 1 }
+    return 0
+}
+fun binarySearch() {
+    println("\n" + "Start searching (quick sort + binary search)...")
+    val sortList = sortedFile.readLines().toMutableList()
+    var cnt = 0
+    val start = System.currentTimeMillis()
+    sortedFile.writeText(quickSortOp(sortList, 0, sortList.lastIndex).joinToString("\n"))
+    val end1 = System.currentTimeMillis()
+    val time1 = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", end1 - start)
+    find.forEach{ cnt += binarySearchOp(sortList, 0, sortList.lastIndex, it) }
+    val time2 = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", System.currentTimeMillis() - end1)
+    val totalTime = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", System.currentTimeMillis() - start)
+    println("Found $cnt / ${find.size} entries. Time taken: $totalTime")
+    println("Sorting time: $time1")
+    println("Searching time: $time2")
+}
+fun quickSortOp(halfList:MutableList<String>, s:Int, e:Int):MutableList<String> {
+    if (e - s == 0) return halfList
+    var pivot = (e + s) / 2
+    var start = s
+    var end = e
+    val pivotElement = halfList[pivot]
+    while (start < end) {
+        while (halfList[start].substringAfter(' ') < pivotElement.substringAfter(' ')) start++
+        while (halfList[end].substringAfter(' ') > pivotElement.substringAfter(' ')) end--
+        if (start < end) {
+            halfList[start] = halfList[end].apply { halfList[end] = halfList[start] }
+            start++
+            end--
+        }
+    }
+    pivot = halfList.indexOf(pivotElement)
+    if (s < pivot - 1) { quickSortOp(halfList, s, pivot - 1) }
+    if (pivot < e - 1) { quickSortOp(halfList, pivot + 1, e) }
+    return halfList
+}
+fun binarySearchOp(list: List<String>, s: Int, e: Int, n: String): Int {
+    return when {
+        list[(e + s) / 2].substringAfter(' ') == n -> { 1 }
+        e <= s -> { 0 }
+        list[(e + s) / 2].substringAfter(' ') < n -> { binarySearchOp(list = list, s = (e + s) / 2 + 1, e = e, n = n) }
+        list[(e + s) / 2].substringAfter(' ') > n -> { binarySearchOp(list = list, s = s, e = (e + s) / 2 - 1, n = n) }
+        else -> { 0 }
+    }
+}
+fun hashTableSearch() {
+    println("\n" + "Start searching (hash table)...")
+    val hashMap = HashMap<String, String>()
+    val start = System.currentTimeMillis()
+    aFile.forEachLine { hashMap[it.substringBefore(' ')] = it.substringAfter(' ') }
+    val end1 = System.currentTimeMillis()
+    var cnt = 0
+    find.forEach{ cnt += hashSearchOp(hashMap, it) }
+    val end2 = System.currentTimeMillis()
+    val time1 = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", end1 - start)
+    val time2 = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", end2 - end1)
+    val totalTime = String.format("%1\$tM min. %1\$tS sec. %1\$tL ms.", end2 - start)
+    println(
+        "Found $cnt / ${find.size} entries. Time taken: $totalTime" +
+        "\nCreating time: $time1" + "\nSearching time: $time2")
+}
+fun hashSearchOp(map: HashMap<String, String>, entry: String): Int = if (map.containsValue(entry)) 1 else 0
